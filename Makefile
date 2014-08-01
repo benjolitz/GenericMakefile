@@ -2,13 +2,13 @@
 # The name of the executable to be created
 BIN_NAME := hello
 # Compiler used
-CXX ?= g++
+C ?= gcc
 # Extension of source files used in the project
-SRC_EXT = cpp
+SRC_EXT = c
 # Path to the source directory, relative to the makefile
 SRC_PATH = .
 # General compiler flags
-COMPILE_FLAGS = -std=c++11 -Wall -Wextra -g
+COMPILE_FLAGS = -std=c99 -Wall -Wextra -g
 # Additional release-specific flags
 RCOMPILE_FLAGS = -D NDEBUG
 # Additional debug-specific flags
@@ -47,9 +47,9 @@ ifeq ($(V),true)
 endif
 
 # Combine compiler and linker flags
-release: export CXXFLAGS := $(CXXFLAGS) $(COMPILE_FLAGS) $(RCOMPILE_FLAGS)
+release: export CFLAGS := $(CFLAGS) $(COMPILE_FLAGS) $(RCOMPILE_FLAGS)
 release: export LDFLAGS := $(LDFLAGS) $(LINK_FLAGS) $(RLINK_FLAGS)
-debug: export CXXFLAGS := $(CXXFLAGS) $(COMPILE_FLAGS) $(DCOMPILE_FLAGS)
+debug: export CFLAGS := $(CFLAGS) $(COMPILE_FLAGS) $(DCOMPILE_FLAGS)
 debug: export LDFLAGS := $(LDFLAGS) $(LINK_FLAGS) $(DLINK_FLAGS)
 
 # Build and output paths
@@ -61,7 +61,7 @@ install: export BIN_PATH := bin/release
 
 # Find all source files in the source directory, sorted by most
 # recently modified
-SOURCES = $(shell find $(SRC_PATH)/ -name '*.$(SRC_EXT)' -printf '%T@\t%p\n' \
+SOURCES = $(shell find $(SRC_PATH)/ -name '*.$(SRC_EXT)' -printf '%T@\t%p\n' 2>/dev/null \
 					| sort -k 1nr | cut -f2-)
 # fallback in case the above fails
 rwildcard = $(foreach d, $(wildcard $1*), $(call rwildcard,$d/,$2) \
@@ -81,8 +81,8 @@ TIME_FILE = $(dir $@).$(notdir $@)_time
 START_TIME = date '+%s' > $(TIME_FILE)
 END_TIME = read st < $(TIME_FILE) ; \
 	$(RM) $(TIME_FILE) ; \
-	st=$$((`date '+%s'` - $$st - 86400)) ; \
-	echo `date -u -d @$$st '+%H:%M:%S'` 
+	st=$$((`python -c "import time;print(int(time.time()- $$st))"` )) ; \
+	python -c "import time;print time.strftime('%H:%M:%S', time.gmtime($$st))"
 
 # Version macros
 # Comment/remove this section to remove versioning
@@ -99,7 +99,7 @@ ifeq ($(shell git describe > /dev/null 2>&1 ; echo $$?), 0)
 	VERSION_HASH := $(word 5, $(VERSION))
 	VERSION_STRING := \
 		"$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH).$(VERSION_REVISION)-$(VERSION_HASH)"
-	override CXXFLAGS := $(CXXFLAGS) \
+	override CFLAGS := $(CFLAGS) \
 		-D VERSION_MAJOR=$(VERSION_MAJOR) \
 		-D VERSION_MINOR=$(VERSION_MINOR) \
 		-D VERSION_PATCH=$(VERSION_PATCH) \
@@ -171,7 +171,7 @@ all: $(BIN_PATH)/$(BIN_NAME)
 $(BIN_PATH)/$(BIN_NAME): $(OBJECTS)
 	@echo "Linking: $@"
 	@$(START_TIME)
-	$(CMD_PREFIX)$(CXX) $(OBJECTS) $(LDFLAGS) -o $@
+	$(CMD_PREFIX)$(C) $(OBJECTS) $(LDFLAGS) -o $@
 	@echo -en "\t Link time: "
 	@$(END_TIME)
 
@@ -184,7 +184,7 @@ $(BIN_PATH)/$(BIN_NAME): $(OBJECTS)
 $(BUILD_PATH)/%.o: $(SRC_PATH)/%.$(SRC_EXT)
 	@echo "Compiling: $< -> $@"
 	@$(START_TIME)
-	$(CMD_PREFIX)$(CXX) $(CXXFLAGS) $(INCLUDES) -MP -MMD -c $< -o $@
+	$(CMD_PREFIX)$(C) $(CFLAGS) $(INCLUDES) -MP -MMD -c $< -o $@
 	@echo -en "\t Compile time: "
 	@$(END_TIME)
 
